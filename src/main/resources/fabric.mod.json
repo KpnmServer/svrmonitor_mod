@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "svrmonitor",
+  "version": "${version}",
+
+  "name": "SvrMonitor",
+  "description": "Server monitor mod for kpnm web server",
+  "authors": [
+    "zyxgad"
+  ],
+  "contact": {
+    "homepage": "https://github.com/KpnmServer/svrmonitor_mod/",
+    "sources": "https://github.com/KpnmServer/svrmonitor_mod/"
+  },
+
+  "license": "CC0-1.0",
+  "icon": "assets/modid/icon.png",
+
+  "environment": "server",
+  "entrypoints": {
+    "main": [
+      "com.github.kpnmserver.svrmonitor_mod.SvrMonitorMod"
+    ]
+  },
+  "mixins": [
+    "modid.mixins.json"
+  ],
+
+  "depends": {
+    "fabricloader": ">=0.11.3",
+    "fabric": "*",
+    "minecraft": "1.16.x",
+    "java": ">=8"
+  }
+}
