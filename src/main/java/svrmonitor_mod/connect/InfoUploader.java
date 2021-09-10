@@ -40,7 +40,7 @@ public interface InfoUploader{
 		return Thread.activeCount();
 	}
 
-	public static final int SERVER_UNKNOW = 0;
+	public static final int SERVER_UNKNOWN = 0;
 	public static final int SERVER_STARTING = 1;
 	public static final int SERVER_STARTED = 2;
 	public static final int SERVER_STOPPING = 3;

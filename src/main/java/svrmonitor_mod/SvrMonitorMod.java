@@ -35,6 +35,7 @@ public class SvrMonitorMod implements ModInitializer {
 	private File folder;
 	private volatile InfoUploader uploader;
 	private Timer upload_helper = null;
+	private int statuscode = InfoUploader.SERVER_UNKNOWN;
 	public volatile CrashReport crashreport = null;
 
 	public SvrMonitorMod(){
@@ -66,12 +67,14 @@ public class SvrMonitorMod implements ModInitializer {
 	public void onStarting(MinecraftServer server){
 		this.server = server;
 		this.onReload();
+		this.statuscode = InfoUploader.SERVER_STARTING;
 		if(this.uploader != null){
 			this.uploader.sendServerStatus(InfoUploader.SERVER_STARTING);
 		}
 	}
 
 	public void onStarted(MinecraftServer server){
+		this.statuscode = InfoUploader.SERVER_STARTED;
 		if(this.uploader != null){
 			this.uploader.sendServerStatus(InfoUploader.SERVER_STARTED);
 		}
@@ -97,7 +100,7 @@ public class SvrMonitorMod implements ModInitializer {
 			}
 		}, 100L, (long)(Config.INSTANCE.getUploadTime()) * 1000);
 		if(this.uploader != null){
-			this.uploader.sendServerStatus(InfoUploader.SERVER_UNKNOW);
+			this.uploader.sendServerStatus(InfoUploader.SERVER_UNKNOWN);
 			this.uploader.close();
 			this.uploader = null;
 		}
@@ -115,6 +118,9 @@ public class SvrMonitorMod implements ModInitializer {
 			}catch(URISyntaxException | MalformedURLException e){
 				LOGGER.error("Parse upload url error:\n", e);
 			}
+			if(this.uploader != null){
+				this.uploader.sendServerStatus(this.statuscode);
+			}
 		}
 	}
 
@@ -123,6 +129,7 @@ public class SvrMonitorMod implements ModInitializer {
 	}
 
 	public void onStopping(MinecraftServer server){
+		this.statuscode = InfoUploader.SERVER_STOPPING;
 		if(this.uploader != null){
 			this.uploader.sendServerStatus(InfoUploader.SERVER_STOPPING);
 		}
@@ -130,6 +137,7 @@ public class SvrMonitorMod implements ModInitializer {
 	}
 
 	public void onStopped(MinecraftServer server){
+		this.statuscode = InfoUploader.SERVER_STOPPED;
 		if(this.uploader != null){
 			this.uploader.sendServerStatus(InfoUploader.SERVER_STOPPED);
 			if(this.crashreport == null){

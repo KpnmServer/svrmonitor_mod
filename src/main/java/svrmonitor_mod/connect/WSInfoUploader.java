@@ -18,9 +18,9 @@ import com.github.kpnmserver.svrmonitor_mod.storage.Config;
 import com.github.kpnmserver.svrmonitor_mod.util.JsonUtil;
 
 public final class WSInfoUploader extends WebSocketClient implements InfoUploader{
+	private final Timer ping_timer = new Timer("ws-ping-timer", true);
 	private volatile boolean running = false;
 	private volatile boolean isbroken = false;
-	private final Timer ping_timer = new Timer("ws-ping-timer", true);
 
 	public WSInfoUploader(final String url) throws URISyntaxException {
 		this(new URI(url));

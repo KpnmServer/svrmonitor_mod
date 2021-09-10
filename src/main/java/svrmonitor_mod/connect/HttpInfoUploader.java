@@ -121,7 +121,7 @@ public final class HttpInfoUploader implements InfoUploader {
 				SvrMonitorMod.LOGGER.error("Http code: " + code);
 			}else{
 				instream = connection.getInputStream();
-				final BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+				final BufferedReader reader = new BufferedReader(new InputStreamReader(instream, StandardCharsets.UTF_8));
 				String line;
 				final StringBuilder sbuf = new StringBuilder();
 				while((line = reader.readLine()) != null){
