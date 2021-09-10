@@ -2,7 +2,9 @@
 package com.github.kpnmserver.svrmonitor_mod;
 
 import java.io.File;
+import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.MalformedURLException;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -22,6 +24,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 
 import com.github.kpnmserver.svrmonitor_mod.storage.Config;
 import com.github.kpnmserver.svrmonitor_mod.connect.InfoUploader;
+import com.github.kpnmserver.svrmonitor_mod.connect.HttpInfoUploader;
 import com.github.kpnmserver.svrmonitor_mod.connect.WSInfoUploader;
 
 public class SvrMonitorMod implements ModInitializer {
@@ -30,9 +33,9 @@ public class SvrMonitorMod implements ModInitializer {
 
 	private MinecraftServer server = null;
 	private File folder;
-	private InfoUploader uploader;
+	private volatile InfoUploader uploader;
 	private Timer upload_helper = null;
-	public CrashReport crashreport = null;
+	public volatile CrashReport crashreport = null;
 
 	public SvrMonitorMod(){
 		this.folder = new File("svrmonitor");
@@ -64,13 +67,13 @@ public class SvrMonitorMod implements ModInitializer {
 		this.server = server;
 		this.onReload();
 		if(this.uploader != null){
-			this.uploader.sendServerStatus("starting");
+			this.uploader.sendServerStatus(InfoUploader.SERVER_STARTING);
 		}
 	}
 
 	public void onStarted(MinecraftServer server){
 		if(this.uploader != null){
-			this.uploader.sendServerStatus("started");
+			this.uploader.sendServerStatus(InfoUploader.SERVER_STARTED);
 		}
 	}
 
@@ -94,13 +97,22 @@ public class SvrMonitorMod implements ModInitializer {
 			}
 		}, 100L, (long)(Config.INSTANCE.getUploadTime()) * 1000);
 		if(this.uploader != null){
+			this.uploader.sendServerStatus(InfoUploader.SERVER_UNKNOW);
 			this.uploader.close();
 			this.uploader = null;
 		}
 		if(Config.INSTANCE.getEnable()){
 			try{
-				this.uploader = new WSInfoUploader(Config.INSTANCE.getUploadUrl());
-			}catch(URISyntaxException e){
+				final URI uploaduri = new URI(Config.INSTANCE.getUploadUrl());
+				final String scheme = uploaduri.getScheme();
+				if(scheme.equals("http") || scheme.equals("https")){
+					this.uploader = new HttpInfoUploader(uploaduri);
+				}else if(scheme.equals("ws") || scheme.equals("wss")){
+					this.uploader = new WSInfoUploader(uploaduri);
+				}else{
+					LOGGER.error("Unknown scheme: " + scheme);
+				}
+			}catch(URISyntaxException | MalformedURLException e){
 				LOGGER.error("Parse upload url error:\n", e);
 			}
 		}
@@ -112,14 +124,14 @@ public class SvrMonitorMod implements ModInitializer {
 
 	public void onStopping(MinecraftServer server){
 		if(this.uploader != null){
-			this.uploader.sendServerStatus("stopping");
+			this.uploader.sendServerStatus(InfoUploader.SERVER_STOPPING);
 		}
 		this.onSave();
 	}
 
 	public void onStopped(MinecraftServer server){
 		if(this.uploader != null){
-			this.uploader.sendServerStatus("stopped");
+			this.uploader.sendServerStatus(InfoUploader.SERVER_STOPPED);
 			if(this.crashreport == null){
 				this.uploader.close();
 			}else{

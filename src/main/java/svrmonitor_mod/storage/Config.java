@@ -33,15 +33,13 @@ public final class Config{
 		public int uploadtime = 20;
 		@SerializedName("upload_url")
 		public String uploadurl = "ws://url.to/upload";
-		@SerializedName("upload_token")
-		public String uploadtoken = "";
 
 		public Item(){}
 	}
 
 	private Item item = new Item();
 
-	public void setEnable(boolean enable){
+	public void setEnable(final boolean enable){
 		this.item.enable = enable;
 	}
 
@@ -57,12 +55,8 @@ public final class Config{
 		return this.item.uploadurl;
 	}
 
-	public String getUploadToken(){
-		return this.item.uploadtoken;
-	}
-
-	public void setUploadToken(final String tk){
-		this.item.uploadtoken = tk;
+	public void setUploadUrl(final String url){
+		this.item.uploadurl = url;
 	}
 
 	public void reload(){

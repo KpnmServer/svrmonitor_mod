@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 
 import org.java_websocket.client.WebSocketClient;
@@ -17,7 +19,8 @@ import com.github.kpnmserver.svrmonitor_mod.util.JsonUtil;
 
 public final class WSInfoUploader extends WebSocketClient implements InfoUploader{
 	private volatile boolean running = false;
-	private volatile int sending_count = 0;
+	private volatile boolean isbroken = false;
+	private final Timer ping_timer = new Timer("ws-ping-timer", true);
 
 	public WSInfoUploader(final String url) throws URISyntaxException {
 		this(new URI(url));
@@ -27,13 +30,26 @@ public final class WSInfoUploader extends WebSocketClient implements InfoUploade
 		super(uri);
 		try{
 			if(!super.connectBlocking(5L, TimeUnit.SECONDS)){
-				SvrMonitorMod.LOGGER.error("Can not connect to remote server " + uri.toString());
+				SvrMonitorMod.LOGGER.error("Can not connect to remote server: " + uri.toString());
+				return;
 			}
 		}catch(InterruptedException e){}
+		this.ping_timer.scheduleAtFixedRate(new TimerTask(){
+			@Override
+			public void run(){
+				if(WSInfoUploader.this.running){
+					WSInfoUploader.this.sendMessage(JsonUtil.asMap("status", "ping"));
+				}
+			}
+		}, 0L, 1000L);
 	}
 
 	public boolean isRunning(){
 		return this.running;
+	}
+
+	public boolean isBroken(){
+		return this.isbroken;
 	}
 
 	@Override
@@ -43,44 +59,21 @@ public final class WSInfoUploader extends WebSocketClient implements InfoUploade
 
 	@Override
 	public void onClose(int paramInt, String paramString, boolean paramBoolean){
+		if(paramInt == 1006){
+			this.isbroken = true;
+		}
 		this.running = false;
+		this.ping_timer.cancel();
 	}
 
 	@Override
 	public void onMessage(final String m){
+		SvrMonitorMod.LOGGER.info("wsmsg: " + m);
 		try{
 			final Map<String, Object> msg = JsonUtil.parseJsonToMap(m);
 			switch((String)(msg.get("status"))){
-				case "init":{
-					final String tk = (String)(msg.get("token"));
-					Config.INSTANCE.setUploadToken(tk);
-					Config.INSTANCE.save();
-					this.sendMessage(JsonUtil.asMap(
-						"status", "info",
-						"interval", Integer.valueOf(Config.INSTANCE.getUploadTime()),
-						"ticks", Integer.valueOf(0),
-						"cpu_num", Integer.valueOf(InfoUploader.CPU_NUM),
-						"java_version", InfoUploader.JAVA_VERSION,
-						"os", InfoUploader.OS_NAME + " (" + InfoUploader.OS_ARCH + ") version " + InfoUploader.OS_VERSION,
-						"max_mem", Long.valueOf(InfoUploader.MAX_MEMORY),
-						"total_mem", Long.valueOf(InfoUploader.getTotalMemory()),
-						"used_mem", Long.valueOf(InfoUploader.getUsedMemory()),
-						"cpu_load", Double.valueOf(InfoUploader.getCpuLoad()),
-						"cpu_time", Double.valueOf(InfoUploader.getCpuTime())
-					));
-					this.running = true;
+				case "pong":
 					break;
-				}
-				case "token_err":{
-					SvrMonitorMod.LOGGER.error("Web socket auth token is wrong");
-					break;
-				}
-				case "change_token":{
-					final String tk = (String)(msg.get("token"));
-					Config.INSTANCE.setUploadToken(tk);
-					Config.INSTANCE.save();
-					break;
-				}
 				case "close":{
 					this.running = false;
 					super.close();
@@ -106,24 +99,42 @@ public final class WSInfoUploader extends WebSocketClient implements InfoUploade
 		this.sendMessage(JsonUtil.GSON.toJson(msg));
 	}
 
-	public void sendServerStatus(final String status){
+	public void sendServerStatus(final int code){
 		if(this.running && super.isOpen()){
 			this.sendMessage(JsonUtil.asMap(
 				"status", "status",
-				"server", status
+				"code", Integer.valueOf(code)
 			));
 		}
 	}
 
 	public void init(){
 		this.sendMessage(JsonUtil.asMap(
-			"status", "init",
-			"token", Config.INSTANCE.getUploadToken()
+			"status", "info",
+			"interval", Integer.valueOf(Config.INSTANCE.getUploadTime()),
+			"ticks", Integer.valueOf(0),
+			"cpu_num", Integer.valueOf(InfoUploader.CPU_NUM),
+			"java_version", InfoUploader.JAVA_VERSION,
+			"os", InfoUploader.OS_NAME + " (" + InfoUploader.OS_ARCH + ") version " + InfoUploader.OS_VERSION,
+			"max_mem", Long.valueOf(InfoUploader.MAX_MEMORY),
+			"total_mem", Long.valueOf(InfoUploader.getTotalMemory()),
+			"used_mem", Long.valueOf(InfoUploader.getUsedMemory()),
+			"cpu_load", Double.valueOf(InfoUploader.getCpuLoad()),
+			"cpu_time", Double.valueOf(InfoUploader.getCpuTime())
 		));
+		this.running = true;
 	}
 
 	@Override
 	public void tick(final int ticks){
+		if(this.isbroken){
+			this.isbroken = false;
+			try{
+				if(!super.connectBlocking(5L, TimeUnit.SECONDS)){
+					SvrMonitorMod.LOGGER.error("Can not reconnect to remote server.");
+				}
+			}catch(InterruptedException e){}
+		}
 		if(this.running && super.isOpen()){
 			this.sendMessage(JsonUtil.asMap(
 				"status", "info",

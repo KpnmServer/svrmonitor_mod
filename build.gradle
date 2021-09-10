@@ -64,6 +64,9 @@ jar {
 	from("LICENSE") {
 		rename { "${it}_${project.archivesBaseName}"}
 	}
+	manifest {
+		attributes 'Class-Path': './libs/Java-WebSocket.jar'
+	}
 }
 
 // configure the maven publication

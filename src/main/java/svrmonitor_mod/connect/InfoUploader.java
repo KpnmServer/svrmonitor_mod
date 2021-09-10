@@ -33,18 +33,26 @@ public interface InfoUploader{
 	}
 
 	public static double getCpuTime(){
-		return OS_MXB.getProcessCpuTime() / 1000000000d; // return second
+		return OS_MXB.getProcessCpuTime() / 1000000000f; // return second
 	}
 
 	public static int getThreadNum(){
 		return Thread.activeCount();
 	}
 
-	public void sendServerStatus(final String status);
+	public static final int SERVER_UNKNOW = 0;
+	public static final int SERVER_STARTING = 1;
+	public static final int SERVER_STARTED = 2;
+	public static final int SERVER_STOPPING = 3;
+	public static final int SERVER_STOPPED = 4;
 
-	public void tick(int ticks);
+	/**********/
+
+	public void sendServerStatus(final int code);
+
+	public void tick(final int ticks);
 
 	public void close();
 
-	public void close(Throwable e);
+	public void close(final Throwable e);
 }
