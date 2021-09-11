@@ -33,6 +33,10 @@ public final class Config{
 		public int uploadtime = 20;
 		@SerializedName("upload_url")
 		public String uploadurl = "ws://url.to/upload";
+		@SerializedName("try_max_num")
+		public int try_max_num = 3;
+		@SerializedName("ignore_refused")
+		public boolean ignore_refused = false;
 
 		public Item(){}
 	}
@@ -57,6 +61,14 @@ public final class Config{
 
 	public void setUploadUrl(final String url){
 		this.item.uploadurl = url;
+	}
+
+	public int getTryMaxNum(){
+		return this.item.try_max_num;
+	}
+
+	public boolean getIgnoreRefused(){
+		return this.item.ignore_refused;
 	}
 
 	public void reload(){

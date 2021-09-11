@@ -54,6 +54,7 @@ public final class HttpInfoUploader implements InfoUploader {
 			"cpu_load", Double.valueOf(InfoUploader.getCpuLoad()),
 			"cpu_time", Double.valueOf(InfoUploader.getCpuTime())
 		));
+		this.sendServerStatus(SvrMonitorMod.INSTANCE.getStatusCode());
 		if(msg != null){
 			Map<String, Object> msgobj = JsonUtil.parseJsonToMap(msg);
 			this.svrid = (String)(msgobj.get("id"));
@@ -107,44 +108,59 @@ public final class HttpInfoUploader implements InfoUploader {
 		HttpURLConnection connection = null;
 		OutputStream outstream = null;
 		InputStream instream = null;
-		try{
-			connection = (HttpURLConnection)(this.url.openConnection());
-			connection.setRequestMethod("POST");
-			connection.setConnectTimeout(1000);
-			connection.setReadTimeout(1500);
-			connection.setDoOutput(true);
-			connection.setRequestProperty("Content-Type", "application/json");
-			outstream = connection.getOutputStream();
-			outstream.write(body.getBytes());
-			final int code = connection.getResponseCode();
-			if(code != 200){
-				SvrMonitorMod.LOGGER.error("Http code: " + code);
-			}else{
-				instream = connection.getInputStream();
-				final BufferedReader reader = new BufferedReader(new InputStreamReader(instream, StandardCharsets.UTF_8));
-				String line;
-				final StringBuilder sbuf = new StringBuilder();
-				while((line = reader.readLine()) != null){
-					sbuf.append(line).append('\n');
+		Exception err = null;
+		for(int i = 0; i < Config.INSTANCE.getTryMaxNum() ;i++){
+			try{
+				connection = (HttpURLConnection)(this.url.openConnection());
+				connection.setRequestMethod("POST");
+				connection.setConnectTimeout(1000);
+				connection.setReadTimeout(1500);
+				connection.setDoOutput(true);
+				connection.setRequestProperty("Content-Type", "application/json");
+				outstream = connection.getOutputStream();
+				outstream.write(body.getBytes());
+				final int code = connection.getResponseCode();
+				if(code != 200){
+					SvrMonitorMod.LOGGER.error("Http code: " + code);
+				}else{
+					instream = connection.getInputStream();
+					final BufferedReader reader = new BufferedReader(new InputStreamReader(instream, StandardCharsets.UTF_8));
+					String line;
+					final StringBuilder sbuf = new StringBuilder();
+					while((line = reader.readLine()) != null){
+						sbuf.append(line).append('\n');
+					}
+					return sbuf.toString();
 				}
-				return sbuf.toString();
+			}catch(IOException e){
+				err = e;
+			}finally{
+				if(outstream != null){try{
+					outstream.close();
+				}catch(IOException e){
+					SvrMonitorMod.LOGGER.error(e);
+				}}
+				if(instream != null){try{
+					instream.close();
+				}catch(IOException e){
+					SvrMonitorMod.LOGGER.error(e);
+				}}
+				connection.disconnect();
 			}
-		}catch(ConnectException e){
-			SvrMonitorMod.LOGGER.error("Connection refused");
-		}catch(IOException e){
-			SvrMonitorMod.LOGGER.error(e);
-		}finally{
-			if(outstream != null){try{
-				outstream.close();
-			}catch(IOException e){
-				SvrMonitorMod.LOGGER.error(e);
-			}}
-			if(instream != null){try{
-				instream.close();
-			}catch(IOException e){
-				SvrMonitorMod.LOGGER.error(e);
-			}}
-			connection.disconnect();
+			try{
+				Thread.sleep(500);
+			}catch(InterruptedException e){
+				return null;
+			}
+		}
+		if(err != null){
+			if(err instanceof ConnectException){
+				if(Config.INSTANCE.getIgnoreRefused()){
+					SvrMonitorMod.LOGGER.error("Connection refused");
+				}
+			}else{
+				SvrMonitorMod.LOGGER.error("Exception in <n> times:\n", err);
+			}
 		}
 		return null;
 	}

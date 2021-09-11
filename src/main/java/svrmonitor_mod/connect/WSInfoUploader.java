@@ -123,6 +123,7 @@ public final class WSInfoUploader extends WebSocketClient implements InfoUploade
 			"cpu_time", Double.valueOf(InfoUploader.getCpuTime())
 		));
 		this.running = true;
+		this.sendServerStatus(SvrMonitorMod.INSTANCE.getStatusCode());
 	}
 
 	@Override

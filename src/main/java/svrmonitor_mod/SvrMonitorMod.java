@@ -15,6 +15,8 @@ import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
+import net.minecraft.text.LiteralText;
 import net.minecraft.util.crash.CrashReport;
 
 import net.fabricmc.api.ModInitializer;
@@ -22,6 +24,7 @@ import net.fabricmc.fabric.api.command.v1.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 
+import com.github.kpnmserver.svrmonitor_mod.command.SvrMonitorCommand;
 import com.github.kpnmserver.svrmonitor_mod.storage.Config;
 import com.github.kpnmserver.svrmonitor_mod.connect.InfoUploader;
 import com.github.kpnmserver.svrmonitor_mod.connect.HttpInfoUploader;
@@ -54,6 +57,10 @@ public class SvrMonitorMod implements ModInitializer {
 		return this.folder;
 	}
 
+	public int getStatusCode(){
+		return this.statuscode;
+	}
+
 	@Override
 	public void onInitialize(){
 		LOGGER.info("SvrMonitor is onInitialize");
@@ -81,7 +88,7 @@ public class SvrMonitorMod implements ModInitializer {
 	}
 
 	public void onRegisterCommands(CommandDispatcher<ServerCommandSource> dispatcher, boolean dedicated){
-		//TODO
+		SvrMonitorCommand.register(dispatcher);
 	}
 
 	public void onReload(){
@@ -148,5 +155,9 @@ public class SvrMonitorMod implements ModInitializer {
 			this.uploader = null;
 		}
 		this.server = null;
+	}
+
+	public static Text createText(final String text){
+		return new LiteralText(text);
 	}
 }
