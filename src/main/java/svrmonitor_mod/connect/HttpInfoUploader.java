@@ -121,7 +121,7 @@ public final class HttpInfoUploader implements InfoUploader {
 				outstream.write(body.getBytes());
 				final int code = connection.getResponseCode();
 				if(code != 200){
-					SvrMonitorMod.LOGGER.error("Http code: " + code);
+					err = new RuntimeException("Http code: " + code);
 				}else{
 					instream = connection.getInputStream();
 					final BufferedReader reader = new BufferedReader(new InputStreamReader(instream, StandardCharsets.UTF_8));
@@ -159,7 +159,7 @@ public final class HttpInfoUploader implements InfoUploader {
 					SvrMonitorMod.LOGGER.error("Connection refused");
 				}
 			}else{
-				SvrMonitorMod.LOGGER.error("Exception in <n> times:\n", err);
+				SvrMonitorMod.LOGGER.error("Exception in <n> times: " + err.getMessage());
 			}
 		}
 		return null;
