@@ -76,8 +76,9 @@ public final class SvrMonitorCommand{
 			)
 			.then(literal("status")
 				.executes((context)->{
+					final boolean isalive = SvrMonitorMod.INSTANCE.getUploader() != null && SvrMonitorMod.INSTANCE.getUploader().isalive();
 					context.getSource().sendFeedback(SvrMonitorMod.createText(
-						"Server monitor " + (SvrMonitorMod.INSTANCE.getUploader().isalive() ?"is" :"isn't") + " alive now"), true);
+						"Server monitor " + (isalive ?"is" :"isn't") + " alive now"), true);
 					return Command.SINGLE_SUCCESS;
 				})
 			)
