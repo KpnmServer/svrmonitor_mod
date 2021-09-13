@@ -4,6 +4,7 @@ package com.github.kpnmserver.svrmonitor_mod.connect;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.ConnectException;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -18,9 +19,10 @@ import com.github.kpnmserver.svrmonitor_mod.storage.Config;
 import com.github.kpnmserver.svrmonitor_mod.util.JsonUtil;
 
 public final class WSInfoUploader extends WebSocketClient implements InfoUploader{
-	private final Timer ping_timer = new Timer("ws-ping-timer", true);
+	private Timer ping_timer = null;
 	private volatile boolean running = false;
 	private volatile boolean isbroken = false;
+	private volatile long last_pong = 0;
 
 	public WSInfoUploader(final String url) throws URISyntaxException {
 		this(new URI(url));
@@ -34,14 +36,6 @@ public final class WSInfoUploader extends WebSocketClient implements InfoUploade
 				return;
 			}
 		}catch(InterruptedException e){}
-		this.ping_timer.scheduleAtFixedRate(new TimerTask(){
-			@Override
-			public void run(){
-				if(WSInfoUploader.this.running){
-					WSInfoUploader.this.sendMessage(JsonUtil.asMap("status", "ping"));
-				}
-			}
-		}, 0L, 1000L);
 	}
 
 	public boolean isRunning(){
@@ -55,6 +49,16 @@ public final class WSInfoUploader extends WebSocketClient implements InfoUploade
 	@Override
 	public void onOpen(ServerHandshake shake){
 		this.init();
+		this.ping_timer = new Timer("ws-ping-timer", true);
+		this.ping_timer.scheduleAtFixedRate(new TimerTask(){
+			@Override
+			public void run(){
+				if(WSInfoUploader.this.running){
+					WSInfoUploader.this.sendMessage(JsonUtil.asMap("status", "ping"));
+				}
+			}
+		}, 0L, 1000L);
+		this.last_pong = System.currentTimeMillis();
 	}
 
 	@Override
@@ -63,12 +67,15 @@ public final class WSInfoUploader extends WebSocketClient implements InfoUploade
 			this.isbroken = true;
 		}
 		this.running = false;
-		this.ping_timer.cancel();
+		if(this.ping_timer != null){
+			this.ping_timer.cancel();
+			this.ping_timer = null;
+		}
 	}
 
 	@Override
 	public void onMessage(final String m){
-		SvrMonitorMod.LOGGER.info("wsmsg: " + m);
+		this.last_pong = System.currentTimeMillis();
 		try{
 			final Map<String, Object> msg = JsonUtil.parseJsonToMap(m);
 			switch((String)(msg.get("status"))){
@@ -86,7 +93,10 @@ public final class WSInfoUploader extends WebSocketClient implements InfoUploade
 
 	@Override
 	public void onError(Exception err){
-		SvrMonitorMod.LOGGER.error("Web socket error:\n", err);
+		if(err instanceof ConnectException){
+			return;			
+		}
+		SvrMonitorMod.LOGGER.error("Web socket error:", err);
 	}
 
 	public void sendMessage(final String msg){
@@ -129,14 +139,23 @@ public final class WSInfoUploader extends WebSocketClient implements InfoUploade
 	@Override
 	public void tick(final int ticks){
 		if(this.isbroken){
-			this.isbroken = false;
 			try{
-				if(!super.connectBlocking(5L, TimeUnit.SECONDS)){
+				for(int i = 0; i < Config.INSTANCE.getTryMaxNum() ;i++){
+					if(super.reconnectBlocking()){
+						this.isbroken = false;
+						break;
+					}
+					Thread.sleep(500);
+				}
+				if(this.isbroken){
 					SvrMonitorMod.LOGGER.error("Can not reconnect to remote server.");
 				}
 			}catch(InterruptedException e){}
 		}
 		if(this.running && super.isOpen()){
+			if(System.currentTimeMillis() - this.last_pong > 5000){
+				SvrMonitorMod.LOGGER.error("Remote server is not alive more than 5 sec.");
+			}
 			this.sendMessage(JsonUtil.asMap(
 				"status", "info",
 				"ticks", Integer.valueOf(ticks),
