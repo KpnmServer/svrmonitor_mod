@@ -24,6 +24,7 @@ public final class HttpInfoUploader implements InfoUploader {
 	private final String id;
 	private final URL url;
 	private String svrid = "";
+	private boolean alive = false;
 
 	public HttpInfoUploader(final String url) throws MalformedURLException{
 		this(new URL(url));
@@ -68,6 +69,11 @@ public final class HttpInfoUploader implements InfoUploader {
 			"status", "status",
 			"code", Integer.valueOf(code)
 		));
+	}
+
+	@Override
+	public boolean isalive(){
+		return this.alive;
 	}
 
 	@Override
@@ -121,7 +127,9 @@ public final class HttpInfoUploader implements InfoUploader {
 				outstream.write(body.getBytes());
 				final int code = connection.getResponseCode();
 				if(code != 200){
-					err = new RuntimeException("Http code: " + code);
+					if(!Config.INSTANCE.isIgnoreCode(code)){
+						err = new RuntimeException("Http code: " + code);
+					}
 				}else{
 					instream = connection.getInputStream();
 					final BufferedReader reader = new BufferedReader(new InputStreamReader(instream, StandardCharsets.UTF_8));
@@ -130,6 +138,7 @@ public final class HttpInfoUploader implements InfoUploader {
 					while((line = reader.readLine()) != null){
 						sbuf.append(line).append('\n');
 					}
+					this.alive = true;
 					return sbuf.toString();
 				}
 			}catch(IOException e){
@@ -147,6 +156,7 @@ public final class HttpInfoUploader implements InfoUploader {
 				}}
 				connection.disconnect();
 			}
+			this.alive = false;
 			try{
 				Thread.sleep(500);
 			}catch(InterruptedException e){

@@ -55,4 +55,6 @@ public interface InfoUploader{
 	public void close();
 
 	public void close(final Throwable e);
+
+	public boolean isalive();
 }

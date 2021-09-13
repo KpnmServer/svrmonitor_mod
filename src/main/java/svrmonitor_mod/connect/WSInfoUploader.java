@@ -42,6 +42,11 @@ public final class WSInfoUploader extends WebSocketClient implements InfoUploade
 		return this.running;
 	}
 
+	@Override
+	public boolean isalive(){
+		return this.running;
+	}
+
 	public boolean isBroken(){
 		return this.isbroken;
 	}
@@ -96,7 +101,7 @@ public final class WSInfoUploader extends WebSocketClient implements InfoUploade
 		if(err instanceof ConnectException){
 			return;			
 		}
-		SvrMonitorMod.LOGGER.error("Web socket error:", err);
+		SvrMonitorMod.LOGGER.error("Web socket error: " + err.getMessage());
 	}
 
 	public void sendMessage(final String msg){
@@ -148,7 +153,9 @@ public final class WSInfoUploader extends WebSocketClient implements InfoUploade
 					Thread.sleep(500);
 				}
 				if(this.isbroken){
-					SvrMonitorMod.LOGGER.error("Can not reconnect to remote server.");
+					if(!Config.INSTANCE.getIgnoreRefused()){
+						SvrMonitorMod.LOGGER.error("Can not reconnect to remote server.");
+					}
 				}
 			}catch(InterruptedException e){}
 		}

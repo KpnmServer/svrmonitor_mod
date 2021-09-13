@@ -36,7 +36,7 @@ public class SvrMonitorMod implements ModInitializer {
 
 	private MinecraftServer server = null;
 	private File folder;
-	private volatile InfoUploader uploader;
+	private volatile InfoUploader uploader = null;
 	private Timer upload_helper = null;
 	private int statuscode = InfoUploader.SERVER_UNKNOWN;
 	public volatile CrashReport crashreport = null;
@@ -59,6 +59,10 @@ public class SvrMonitorMod implements ModInitializer {
 
 	public int getStatusCode(){
 		return this.statuscode;
+	}
+
+	public InfoUploader getUploader(){
+		return this.uploader;
 	}
 
 	@Override
@@ -106,28 +110,11 @@ public class SvrMonitorMod implements ModInitializer {
 				}
 			}
 		}, 100L, (long)(Config.INSTANCE.getUploadTime()) * 1000);
-		if(this.uploader != null){
-			this.uploader.sendServerStatus(InfoUploader.SERVER_UNKNOWN);
-			this.uploader.close();
-			this.uploader = null;
-		}
-		if(Config.INSTANCE.getEnable()){
-			try{
-				final URI uploaduri = new URI(Config.INSTANCE.getUploadUrl());
-				final String scheme = uploaduri.getScheme();
-				if(scheme.equals("http") || scheme.equals("https")){
-					this.uploader = new HttpInfoUploader(uploaduri);
-				}else if(scheme.equals("ws") || scheme.equals("wss")){
-					this.uploader = new WSInfoUploader(uploaduri);
-				}else{
-					LOGGER.error("Unknown scheme: " + scheme);
-				}
-			}catch(URISyntaxException | MalformedURLException e){
-				LOGGER.error("Parse upload url error:\n", e);
-			}
-			if(this.uploader != null){
-				this.uploader.sendServerStatus(this.statuscode);
-			}
+		this.stopUploader();
+		try{
+			this.startUploader();
+		}catch(Exception e){
+			LOGGER.error(e.getMessage());
 		}
 	}
 
@@ -155,6 +142,38 @@ public class SvrMonitorMod implements ModInitializer {
 			this.uploader = null;
 		}
 		this.server = null;
+	}
+
+	public void stopUploader(){
+		if(this.uploader != null){
+			this.uploader.sendServerStatus(InfoUploader.SERVER_UNKNOWN);
+			this.uploader.close();
+			this.uploader = null;
+		}
+	}
+
+	public void startUploader() throws Exception{
+		if(Config.INSTANCE.getEnable()){
+			if(this.uploader != null){
+				this.stopUploader();
+			}
+			try{
+				final URI uploaduri = new URI(Config.INSTANCE.getUploadUrl());
+				final String scheme = uploaduri.getScheme();
+				if(scheme.equals("http") || scheme.equals("https")){
+					this.uploader = new HttpInfoUploader(uploaduri);
+				}else if(scheme.equals("ws") || scheme.equals("wss")){
+					this.uploader = new WSInfoUploader(uploaduri);
+				}else{
+					throw new Exception("Unknown scheme: " + scheme);
+				}
+			}catch(URISyntaxException | MalformedURLException e){
+				throw new Exception("Parse upload url error: " + e.getMessage());
+			}
+			if(this.uploader != null){
+				this.uploader.sendServerStatus(this.statuscode);
+			}
+		}
 	}
 
 	public static Text createText(final String text){

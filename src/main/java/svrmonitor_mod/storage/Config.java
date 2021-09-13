@@ -37,6 +37,8 @@ public final class Config{
 		public int try_max_num = 3;
 		@SerializedName("ignore_refused")
 		public boolean ignore_refused = false;
+		@SerializedName("ignore_codes")
+		public HashSet<Integer> ignore_codes = new HashSet<>();
 
 		public Item(){}
 	}
@@ -55,6 +57,10 @@ public final class Config{
 		return this.item.uploadtime;
 	}
 
+	public void setUploadTime(final int uploadtime){
+		this.item.uploadtime = uploadtime;
+	}
+
 	public String getUploadUrl(){
 		return this.item.uploadurl;
 	}
@@ -69,6 +75,10 @@ public final class Config{
 
 	public boolean getIgnoreRefused(){
 		return this.item.ignore_refused;
+	}
+
+	public boolean isIgnoreCode(final int code){
+		return this.item.ignore_codes.contains(Integer.valueOf(code));
 	}
 
 	public void reload(){
