@@ -162,6 +162,12 @@ public final class WSInfoUploader extends WebSocketClient implements InfoUploade
 		if(this.running && super.isOpen()){
 			if(System.currentTimeMillis() - this.last_pong > 5000){
 				SvrMonitorMod.LOGGER.error("Remote server is not alive more than 5 sec.");
+				if(System.currentTimeMillis() - this.last_pong > 20000){
+					SvrMonitorMod.LOGGER.error("Remote server is not alive more than 20 sec, broken now.");
+					super.close();
+					this.isbroken = true;
+					return;
+				}
 			}
 			this.sendMessage(JsonUtil.asMap(
 				"status", "info",

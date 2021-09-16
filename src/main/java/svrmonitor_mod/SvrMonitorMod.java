@@ -102,11 +102,11 @@ public class SvrMonitorMod implements ModInitializer {
 			this.upload_helper = null;
 		}
 		this.upload_helper = new Timer("svrmonitor-upload-helper", true);
-		this.upload_helper.scheduleAtFixedRate(new TimerTask(){
+		this.upload_helper.schedule(new TimerTask(){
 			@Override
 			public void run(){
 				if(SvrMonitorMod.this.uploader != null && Config.INSTANCE.getEnable()){
-					SvrMonitorMod.this.uploader.tick(server.getTicks());
+					SvrMonitorMod.this.uploader.tick(SvrMonitorMod.this.server.getTicks());
 				}
 			}
 		}, 100L, (long)(Config.INSTANCE.getUploadTime()) * 1000);
